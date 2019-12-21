@@ -1,4 +1,5 @@
-# Cube Game - A 3D voxel game (Minecraft clone) written in Java with OpenGL
+# Cube Game
+A 3D voxel game (Minecraft clone) written in Java with OpenGL
 
 ## Demo
 *Click to play*
