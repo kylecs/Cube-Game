@@ -16,11 +16,11 @@ public class Player {
 	public Vector3f rotation;
 	private Camera camera;
 	private double verticalVel = 0;
-	private boolean movementEnabled = false;
 	boolean allowJump = true;
+	boolean placed = false;
 	
 	public Player() {
-		this.position = new Vector3f(0.5f, 40, 0.5f);
+		this.position = new Vector3f(0.5f, 70, 0.5f);
 		this.rotation = new Vector3f(0, 180, 0);
 		camera = new Camera(position, rotation);
 
@@ -28,6 +28,14 @@ public class Player {
 	
 	public Camera getCamera() {
 		return camera;
+	}
+	
+	public boolean isPlaced() {
+		return placed;
+	}
+	
+	public void setPlaced(boolean placed) {
+		this.placed = placed;
 	}
 	
 	private void updateRotation(MouseHandler mouseHandler) {
@@ -56,7 +64,7 @@ public class Player {
 		float modifier = 1.0f;
 		
 		if(handler.shiftPressed()) {
-			modifier = 1.5f;
+			modifier = Settings.SPRINT_MODIFIER;
 		}
 		
 		if(handler.wPressed()) {
@@ -201,14 +209,23 @@ public class Player {
 		if(onGround && verticalVel < 0.001f) {
 			this.verticalVel = 0;
 		}else {
-			if(this.verticalVel > -Settings.FALL_MAX) {
+			if(this.verticalVel > -Settings.FALL_MAX && !Settings.FLY) {
 				this.verticalVel -= Settings.FALL_ACCEL * deltaTime;
 			}
 		}
 		
+		if(Settings.FLY) {
+			if(keyHandler.spacePressed()) {
+				this.position.y += Settings.MOVE_SPEED * deltaTime;
+			}else if(keyHandler.shiftPressed()) {
+				this.position.y -= Settings.MOVE_SPEED * deltaTime;
+			}
+		}
+		
 		if(!blockedAbove || this.verticalVel < 0)
-			this.position.y += this.verticalVel * deltaTime;
+			this.position.y += this.verticalVel * deltaTime;	
 		
 		updateCamera();
+		
 	}
 }

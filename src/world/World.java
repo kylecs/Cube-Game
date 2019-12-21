@@ -5,58 +5,23 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import org.joml.Vector2i;
 
-import engine.ChunkMesh;
-import game.Player;
-import misc.Settings;
+import engine.Game;
+import misc.Util;
 
 public class World {
 	
-	private int xOff = -Settings.RENDER_DIST;
-	private int zOff = -Settings.RENDER_DIST;
+	private Map<Vector2i, Chunk> chunkMap;
 	
-	public void addNearChunk(Player p) {
-		int curBaseX = getBaseCoord((int) p.position.x);
-		int curBaseZ = getBaseCoord((int) p.position.z);
-		
-		xOff++;
-		if(xOff == Settings.RENDER_DIST) {
-			xOff = -Settings.RENDER_DIST;;
-			zOff++;
-		}
-		if(zOff == Settings.RENDER_DIST) {
-			zOff = -Settings.RENDER_DIST;
-		}
-				
-		int baseX = curBaseX + (xOff * Chunk.CHUNK_WIDTH);
-		int baseZ = curBaseZ + (zOff * Chunk.CHUNK_WIDTH);
-		addChunk(baseX, baseZ);
-
-	}
-	
-	Map<Vector2i, Chunk> chunkMap;
 	public World() {
 		chunkMap = new ConcurrentHashMap<Vector2i, Chunk>();
 	}
 	
-	public boolean addChunk(int baseX, int baseZ) {
-		Vector2i base = new Vector2i(baseX, baseZ);
-		
-		if(chunkMap.containsKey(base)) return false;
-		
-		Chunk c = new Chunk(baseX, baseZ);
-		chunkMap.put(base, c);
-		c.buildMesh();
-		c.getMesh().bufferData();
-		return true;
+	public Map<Vector2i, Chunk> getChunkMap() {
+		return chunkMap;
 	}
 	
-	public void render() {
-		for(Map.Entry<Vector2i, Chunk> entry: chunkMap.entrySet()) {
-			ChunkMesh mesh = entry.getValue().getMesh();
-			if(mesh != null) {
-				mesh.render();
-			}
-		}
+	public boolean hasChunk(int baseX, int baseZ) {
+		return chunkMap.containsKey(new Vector2i(baseX, baseZ));
 	}
 	
 	public Block getBlock(int x, int y, int z) {
@@ -64,8 +29,8 @@ public class World {
 		if(y >= Chunk.CHUNK_HEIGHT || y < 0)
 			return new Block(Block.BlockType.AIR);
 		
-		int baseX = getBaseCoord(x);
-		int baseZ = getBaseCoord(z);
+		int baseX = Util.getBaseCoord(x);
+		int baseZ = Util.getBaseCoord(z);
 		if(baseX > x) {
 			System.out.println("GETBLOCK ERROR ");
 		}
@@ -82,17 +47,9 @@ public class World {
 		
 	}
 	
-	public void updateChunkMesh(Vector2i base) {
-		if(!chunkMap.containsKey(base)) return;
-		Chunk c = chunkMap.get(base);
-		if(c == null) return;
-		c.buildMesh();
-		c.getMesh().bufferData();
-	}
-	
 	public void setBlock(int x, int y, int z, Block b) {
-		int baseX = getBaseCoord(x);
-		int baseZ = getBaseCoord(z);
+		int baseX = Util.getBaseCoord(x);
+		int baseZ = Util.getBaseCoord(z);
 		if(baseX > x) {
 			System.out.println("SETBLOCK ERROR ");
 		}
@@ -110,44 +67,39 @@ public class World {
 		Chunk chunk = chunkMap.get(base);
 		if(chunk == null) return;
 		chunk.setBlock(relativeX, y, relativeZ, b);
+		Game.get().getChunkMeshRenderer().remesh(base);
 		System.out.println("Setting BLOCK! " + chunk.getBaseX() + " " + chunk.getBaseZ());
 		
-		updateChunkMesh(base);
 				
 		if(relativeX == 0) {
-			updateChunkMesh(new Vector2i(base.x - Chunk.CHUNK_WIDTH, base.y));
+			
 			System.out.println("adj remesh");
+			Game.get().getChunkMeshRenderer().remesh(new Vector2i(base.x - Chunk.CHUNK_WIDTH, base.y));
+
 		}
 		
 		if(relativeX == Chunk.CHUNK_WIDTH - 1) {
-			updateChunkMesh(new Vector2i(base.x + Chunk.CHUNK_WIDTH, base.y));
+			
 			System.out.println("adj remesh");
+			Game.get().getChunkMeshRenderer().remesh(new Vector2i(base.x + Chunk.CHUNK_WIDTH, base.y));
+
 
 		}
 		
 		if(relativeZ == 0) {
-			updateChunkMesh(new Vector2i(base.x, base.y - Chunk.CHUNK_WIDTH));
+			
 			System.out.println("adj remesh");
+			Game.get().getChunkMeshRenderer().remesh(new Vector2i(base.x, base.y - Chunk.CHUNK_WIDTH));
 
 		}
 		
 		if(relativeZ == Chunk.CHUNK_WIDTH - 1) {
-			updateChunkMesh(new Vector2i(base.x, base.y + Chunk.CHUNK_WIDTH));
+			
 			System.out.println("adj remesh");
+			Game.get().getChunkMeshRenderer().remesh(new Vector2i(base.x, base.y + Chunk.CHUNK_WIDTH));
+
 
 		}
 	}
-	
-	
-	private int getBaseCoord(int x) {
-		int base;
-		if(x >= 0) {
-			base =  x - (x % Chunk.CHUNK_WIDTH);
-		}else {
-			if(x % Chunk.CHUNK_WIDTH == 0) return x;
-			base =  x - (Chunk.CHUNK_WIDTH - (-x % Chunk.CHUNK_WIDTH));
-		}		
-		return base;
-		
-	}
+
 }

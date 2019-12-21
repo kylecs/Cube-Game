@@ -6,6 +6,7 @@ layout(location = 3) in float passLight;
 
 out vec2 texCords;
 out float light;
+out vec3 passPosition;
 
 uniform mat4 projectionMatrix;
 
@@ -14,4 +15,6 @@ void main()
 	light = passLight;
 	texCords = passTex;
     gl_Position = projectionMatrix * vec4(position, 1.0f);
+	passPosition = gl_Position.xyz;
+
 }

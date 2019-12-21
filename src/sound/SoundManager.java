@@ -29,10 +29,12 @@ public class SoundManager {
 		ALCCapabilities alcCapabilities = ALC.createCapabilities(device);
 		ALCapabilities alCapabilities = AL.createCapabilities(alcCapabilities);
 		
-		blockBreak = new Sound("res/rock_impact.ogg");
-		song = new Sound("res/song1.ogg");
-		//song.setVolume(0.1f);
-		//song.play();
+		blockBreak = new Sound("rock_impact.ogg");
+		song = new Sound("song1.ogg");
+		song.play();
+		song.setVolume(0.05f);
+		song.setLooping(true);
+		
 		
 	}
 	

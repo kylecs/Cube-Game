@@ -8,6 +8,7 @@ import org.joml.Vector2f;
 import org.joml.Vector3f;
 import org.lwjgl.opengl.ARBShaderObjects;
 import engine.Game;
+import world.Chunk;
 
 public class Util {
 	public static String loadFile(String path) {
@@ -40,6 +41,18 @@ public class Util {
 		
 		
 		return intersection;
+	}
+	
+	public static int getBaseCoord(int x) {
+		int base;
+		if(x >= 0) {
+			base =  x - (x % Chunk.CHUNK_WIDTH);
+		}else {
+			if(x % Chunk.CHUNK_WIDTH == 0) return x;
+			base =  x - (Chunk.CHUNK_WIDTH - (-x % Chunk.CHUNK_WIDTH));
+		}		
+		return base;
+		
 	}
 	
 }

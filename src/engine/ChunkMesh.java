@@ -21,10 +21,25 @@ public class ChunkMesh {
 	private List<ChunkVertex> verts;
 	Chunk chunk;
 	
+	private boolean initialized = false;
+	private boolean buffered = false;
+	
 	public ChunkMesh(Chunk chunk) {
 		this.chunk = chunk;
 		verts = new ArrayList<ChunkVertex>();
+		buildMesh();
 		
+	}
+	
+	public boolean isInitialized() {
+		return initialized;
+	}
+	
+	public boolean isBuffered() {
+		return buffered;
+	}
+	
+	public void init() {
 		vao = new VAO();
 		vao.bind();
 	
@@ -39,9 +54,8 @@ public class ChunkMesh {
 		
 		glEnableVertexAttribArray(3);
 		glVertexAttribPointer(3, 1, GL_FLOAT, false, 6 * Float.BYTES, 5 * Float.BYTES);
+		initialized = true;
 	}
-	
-	
 	
 	public void render() {
 		vao.bind();
@@ -61,6 +75,7 @@ public class ChunkMesh {
 		}
 		buffer.flip();
 		glBufferData(GL_ARRAY_BUFFER, buffer, GL_STATIC_DRAW);
+		buffered = true;
 	}
 	
 	
@@ -100,6 +115,7 @@ public class ChunkMesh {
 	}
 	
 	public void buildMesh() {
+		long start = System.nanoTime();
 		//System.out.println("Building mesh! " + chunk.getBaseX() + " " + chunk.getBaseZ());
 		verts.clear();
 		World w = Game.get().getWorld();
@@ -141,6 +157,10 @@ public class ChunkMesh {
 				}
 			}
 		}
+		long end = System.nanoTime();
+		double diff = ((double) end - start) / 1000000;
+		//System.out.println("Build mesh time: " + diff);
+
 	}
 	
 	public static final float FRONT_VERTS[] = {

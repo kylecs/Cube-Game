@@ -1,5 +1,4 @@
 package engine;
-import org.lwjgl.BufferUtils;
 import org.lwjgl.glfw.GLFWErrorCallback;
 import org.lwjgl.glfw.GLFWFramebufferSizeCallback;
 import org.lwjgl.glfw.GLFWMouseButtonCallback;
@@ -11,7 +10,10 @@ import input.KeyHandler;
 import input.MouseHandler;
 import sound.SoundManager;
 import ui.Hud;
+import world.Block;
+import world.Chunk;
 import world.World;
+import world.WorldGenerator;
 
 import static org.lwjgl.glfw.GLFW.*;
 
@@ -19,8 +21,11 @@ import static org.lwjgl.opengl.GL46.*;
 import static org.lwjgl.system.MemoryUtil.*;
 
 import java.nio.FloatBuffer;
+import java.util.Map.Entry;
 
 import org.joml.Matrix4f;
+import org.joml.Vector2i;
+import org.joml.Vector3f;
 
 
 public class Game {
@@ -34,11 +39,15 @@ public class Game {
 	private Player player;
 	private Hud hud;
 	private SoundManager soundManager;
+	private WorldGenerator worldGenerator;
+	private ChunkMeshRenderer chunkMeshRenderer;
 	
 	private int windowWidth = 900;
 	private int windowHeight = 900;
 	
 	private static Game instance = null;
+	
+	private Vector3f fogColor;
 	
 	private Game() {}
 	
@@ -64,8 +73,7 @@ public class Game {
         glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
         glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
         
-        //slows this right down on my laptop
-        //glfwWindowHint(GLFW_SAMPLES, 4);
+        glfwWindowHint(GLFW_SAMPLES, 4);
 		
 		window = glfwCreateWindow(windowWidth, windowHeight, "Cube Game Tech Testing", NULL, NULL);
 		glfwMakeContextCurrent(window);
@@ -93,6 +101,7 @@ public class Game {
 		glEnable(GL_DEPTH_TEST);
 		glEnable(GL_CULL_FACE);
 		glEnable(GL_MULTISAMPLE);
+		glEnable(GL_FOG);
 		
 		glfwMaximizeWindow(window);
 		
@@ -129,14 +138,46 @@ public class Game {
 		
 		chunkShader.use();
 		
+		setFogColor(0, 191, 255);
+
+		
 		textureAtlas = new TextureAtlas("texture.png");
 		
 		world = new World();
-		world.addChunk(0, 0);
 		
 		hud = new Hud(windowWidth, windowHeight);
 		soundManager = new SoundManager();
+		
+		worldGenerator = new WorldGenerator();
+		chunkMeshRenderer = new ChunkMeshRenderer();
 	}
+	
+	private void setFogColor(float r, float g, float b) {
+		fogColor = new Vector3f(r / 255, g / 255, b / 255);
+		glUniform3f(2, fogColor.x, fogColor.y, fogColor.z);
+	}
+	
+	private void tryPlacePlayer() {
+		for(Entry<Vector2i, Chunk> entry: world.getChunkMap().entrySet()) {
+			Chunk chunk = entry.getValue();
+			if(chunk.isEmpty()) continue;
+			//we will place the player here
+			for(int x = 0; x < Chunk.CHUNK_WIDTH; x++) {
+				for(int z = 0; z < Chunk.CHUNK_WIDTH; z++) {
+					for(int y = Chunk.CHUNK_HEIGHT - 1; y >= 0; y--) {
+						if(chunk.getBlock(x, y, z).getType() != Block.BlockType.AIR) {
+							//place player
+							player.setPlaced(true);
+							player.position.set(chunk.getBaseX() + x + 0.5f, y + 3, chunk.getBaseZ() + z + 0.5f);
+							System.out.println("placing player");
+							return;
+						}
+					}
+				}
+			}
+		}
+	}
+	
 	
 	public void loop() {
 		
@@ -150,10 +191,9 @@ public class Game {
 			long diffNano = now - prev;
 			double deltaTime = (double) diffNano / 1000000;
 			prev = now;
-			//System.out.println(deltaTime);
+			//System.out.println("Total Frame Time: " + deltaTime);
 			
-			
-			glClearColor(0.117f, 0.703f, 0.91f, 1.0f);
+			glClearColor(fogColor.x, fogColor.y, fogColor.z, 1.0f);
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 					
 			
@@ -163,17 +203,23 @@ public class Game {
 			}
 			player.update(keyHandler, mouseHandler, deltaTime);
 			
+			if(!player.isPlaced()) {
+				tryPlacePlayer();
+			}
 			
 			chunkShader.use();
-			setUniform(0, player.getCamera().projectionViewMatrix());
-			world.addNearChunk(player);
-			world.render();
-				
+			setUniformM4f(0, player.getCamera().projectionViewMatrix());
+			
+			chunkMeshRenderer.render();
 			hud.render();
 			
 			glfwSwapBuffers(window);
 			
 		}
+		
+		System.out.println("Cleaning up!");
+		worldGenerator.shutdown();
+		chunkMeshRenderer.shutdown();
 	}
 	
 	public SoundManager getSoundManager() {
@@ -188,8 +234,16 @@ public class Game {
 		return world;
 	}
 	
+	public Player getPlayer() {
+		return player;
+	}
 	
-	public static void setUniform(int uniform, Matrix4f value) {
+	public ChunkMeshRenderer getChunkMeshRenderer() {
+		return chunkMeshRenderer;
+	}
+	
+	
+	public static void setUniformM4f(int uniform, Matrix4f value) {
 		try(MemoryStack stack = MemoryStack.stackPush()) {
 			FloatBuffer fb = stack.mallocFloat(16);
 			value.get(fb);
